@@ -59,6 +59,7 @@
         async function payment() {
             const orderId = document.getElementById('paymentOrderId').value;
             const customerId = document.getElementById('customerId').value;
+            const tip = document.getElementById('tip').value;
             const cardId = document.getElementById('cardId').value;
 
             try {
@@ -69,6 +70,7 @@
                     },
                     body: JSON.stringify({
                         customerId,
+                        tip,
                         cardId
                     })
                 });
@@ -81,11 +83,14 @@
                     // Clear input fields after successful submission
                     fetchBill(); // Refresh the bill data if necessary
                     fetchTransaction();
+                    fetchCards();
+                    fetchCustomers();
                 } else {
                     console.error('An error occurred:', response.statusText);
                 }
                 document.getElementById('paymentOrderId').value = '';
                 document.getElementById('customerId').value = '';
+                document.getElementById('tip').value = '';
                 document.getElementById('cardId').value = '';
             } catch (error) {
                 console.error('Fetch error:', error);
@@ -226,7 +231,7 @@
             table.innerHTML = '';
             transactions.forEach(transaction => {
                 const row = `<tr>
-                                <td>${transaction.order_id !== null ? transaction.order_id : ''}</td>
+                                <td>${transaction.bill_id !== null ? transaction.bill_id : ''}</td>
                                 <td>${transaction.total !== null ? transaction.total : ''}</td>
                                 <td>${transaction.from_bankacct !== null ? transaction.from_bankacct : ''}</td>
                                 <td>${transaction.tdate !== null ? transaction.tdate : ''}</td>
@@ -368,6 +373,7 @@
         </div>
         <div>
             <h2>Bussiness Transactions</h2>
+            <p>Original balance = $5000.00</p>
             <table>
                 <thead>
                     <tr>
@@ -400,6 +406,7 @@
         <h2>Payment</h2>
         <input type="number" id="paymentOrderId" placeholder="Bill number">
         <input type="number" id="customerId" placeholder="Customer ID">
+        <input type="number" id="tip" placeholder="Tip">
         <input type="text" id="cardId" placeholder="Card Number">
         <button onclick="payment()">Payment</button>
     </div>
