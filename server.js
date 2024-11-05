@@ -205,29 +205,77 @@ app.delete('/orders/:id', async(req, res) => {
 //transaction
 app.put('/bill/:bill_id', async(req, res) => {
     const { bill_id } = req.params;
-    const { customerId, cardId } = req.body;
+    const { customerId, tip, cardId } = req.body;
+
     try {
-        const result = await pool.query(
-            'SELECT paid FROM bill WHERE bill_id = $1', [bill_id]
+        // Retrieve the current bill details including total, tip, and tax
+        const billResult = await pool.query(
+            'SELECT total, tip, tax, paid FROM bill WHERE bill_id = $1', [bill_id]
         );
 
-        // If the bill is already paid, send a response and exit the function
-        if (result.rows.length > 0 && result.rows[0].paid === true) {
+        // If the bill does not exist, send an error
+        if (billResult.rowCount === 0) {
+            return res.status(404).send('Bill not found');
+        }
+
+        const billData = billResult.rows[0];
+
+        // Check if the bill is already paid
+        if (billData.paid) {
             return res.status(400).send('Warning: The bill ID is already paid');
         }
 
+        // Update the bill to mark it as paid
         await pool.query(
-            'UPDATE bill SET cust_id = $1, card_id = $2, paid = TRUE WHERE bill_id = $3', [customerId, cardId, bill_id]
+            'UPDATE bill SET cust_id = $1, tip=$2, card_id = $3, paid = TRUE WHERE bill_id = $4', [customerId, tip, cardId, bill_id]
         );
+
+
+
+        // Calculate the total amount to deduct from the card balance
+        const formattedTotalAmount = parseFloat(billData.total) + parseFloat(tip) + parseFloat(billData.tax);
+        const totalAmount = parseFloat(formattedTotalAmount.toFixed(2));
+
+
+
+        // Update the customer's membership points
         await pool.query(
-            'UPDATE customers SET membership_point=membership_point+1 WHERE id = $1', [customerId]
+            'UPDATE customers SET membership_point = membership_point + 1 WHERE id = $1', [customerId]
         );
+
+        // Deduct the total amount from the card balance
+        await pool.query(
+            'UPDATE cards SET balance = balance - $1 WHERE id = $2', [totalAmount, cardId]
+        );
+
+        const businessBalanceResult = await pool.query(
+            'SELECT bussiness_balance FROM transaction ORDER BY id DESC LIMIT 1'
+        );
+
+        const currentBusinessBalance = businessBalanceResult.rowCount > 0 ?
+            businessBalanceResult.rows[0].bussiness_balance :
+            5000.00; // Set to default if no transactions
+
+        // Calculate the new business balance
+        const x = parseFloat(currentBusinessBalance) + parseFloat(totalAmount);
+        const newcurrentBusinessBalance = parseFloat(x.toFixed(2));
+        console.log(currentBusinessBalance, totalAmount, newcurrentBusinessBalance)
+
+        // Insert the transaction record
+        await pool.query(
+            `INSERT INTO transaction (bill_id, total, from_bankacct, bussiness_balance) 
+             VALUES ($1, $2, $3, $4)`, [bill_id, formattedTotalAmount, cardId, newcurrentBusinessBalance]
+        );
+
         res.sendStatus(200);
     } catch (err) {
-        console.error(err.message);
+        console.error('Error processing the request:', err.message);
         res.sendStatus(500);
     }
 });
+
+
+
 
 /*
 
