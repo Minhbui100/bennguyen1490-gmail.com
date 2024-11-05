@@ -45,38 +45,51 @@
             bill.forEach(bills => {
                 const row = `<tr>
                     <td>${bills.bill_id}</td>
-                    <td>${bills.cust_id}</td>
+                    <td>${bills.cust_id !== null ? bills.cust_id : ''}</td>
                     <td>${bills.total}</td>
-                    <td>${bills.tip}</td>
+                    <td>${bills.tip !== null ? bills.tip : ''}</td>
                     <td>${bills.tax}</td>
-                    <td>${bills.card_id}</td>
-                    <td>${bills.paid}</td>
+                    <td>${bills.card_id !== null ? bills.card_id : ''}</td>
+                    <td>${bills.paid === true ? 'paid' : ''}</td>
                     </tr>`;
                 table.innerHTML += row;
             });
         }
 
         async function payment() {
-            const orderId = document.getElementById('paymentOrderId').value; // Corrected to paymentOrderId
+            const orderId = document.getElementById('paymentOrderId').value;
             const customerId = document.getElementById('customerId').value;
-            const cardId = document.getElementById('cardId').value; // Fixed from cardID
+            const cardId = document.getElementById('cardId').value;
 
-            await fetch(`http://localhost:3000/bill/${orderId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    customerId,
-                    cardId
-                })
-            });
+            try {
+                const response = await fetch(`http://localhost:3000/bill/${orderId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        customerId,
+                        cardId
+                    })
+                });
 
-            // Clear input fields after submission
-            document.getElementById('paymentOrderId').value = '';
-            document.getElementById('customerId').value = '';
-            document.getElementById('cardId').value = '';
-            fetchBill(); // Refresh the bill data if necessary
+                if (response.status === 400) {
+                    // Bill is already paid - get and display the warning message
+                    const warningMessage = await response.text(); // Read warning message from the response
+                    displayWarning(warningMessage); // Display warning on the webpage
+                } else if (response.ok) {
+                    // Clear input fields after successful submission
+                    fetchBill(); // Refresh the bill data if necessary
+                    fetchTransaction();
+                } else {
+                    console.error('An error occurred:', response.statusText);
+                }
+                document.getElementById('paymentOrderId').value = '';
+                document.getElementById('customerId').value = '';
+                document.getElementById('cardId').value = '';
+            } catch (error) {
+                console.error('Fetch error:', error);
+            }
         }
 
 
@@ -104,35 +117,58 @@
             const price = document.getElementById('orderPrice').value;
             const quantity = document.getElementById('orderQuantity').value;
 
-            await fetch('http://localhost:3000/orders', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    id, // Send id in the body
-                    name,
-                    price,
-                    quantity
-                })
-            });
+            try {
+                const response = await fetch('http://localhost:3000/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        id,
+                        name,
+                        price,
+                        quantity
+                    })
+                });
 
-            document.getElementById('billNumber').value = '';
-            document.getElementById('orderName').value = ''; // Clear input fields
-            document.getElementById('orderPrice').value = '';
-            document.getElementById('orderQuantity').value = '';
-            fetchOrders();
-            fetchBill(); // Refresh enrollments to reflect any new students
+                if (response.status === 400) {
+                    // Read and display the warning message from the response
+                    const warningMessage = await response.text();
+                    displayWarning(warningMessage);
+                } else if (response.ok) {
+                    // Clear input fields after successful submission
+
+                    fetchOrders();
+                    fetchBill();
+                } else {
+                    console.error('An error occurred:', response.statusText);
+                }
+                document.getElementById('billNumber').value = '';
+                document.getElementById('orderName').value = '';
+                document.getElementById('orderPrice').value = '';
+                document.getElementById('orderQuantity').value = '';
+            } catch (error) {
+                console.error('Fetch error:', error);
+            }
         }
 
         async function deleteOrders() {
             const id = document.getElementById('orderIdDelete').value;
-            await fetch(`http://localhost:3000/orders/${id}`, {
+            const response = await fetch(`http://localhost:3000/orders/${id}`, {
                 method: 'DELETE'
             });
+            if (response.status === 400) {
+                // Read and display the warning message from the response
+                const warningMessage = await response.text();
+                displayWarning(warningMessage);
+            } else if (response.ok) {
+                // Clear input fields after successful submission
+                fetchOrders();
+                fetchBill();
+            } else {
+                console.error('An error occurred:', response.statusText);
+            }
             document.getElementById('orderIdDelete').value = '';
-            fetchOrders();
-            fetchBill(); // Refresh enrollments after deleting a student
         }
 
         async function fetchCards() {
@@ -190,15 +226,50 @@
             table.innerHTML = '';
             transactions.forEach(transaction => {
                 const row = `<tr>
-                                <td>${transaction.order_id}</td>
-                                <td>${transaction.total}</td>
-                                <td>${transaction.from_bankacct}</td>
-                                <td>${transaction.tdate}</td> 
+                                <td>${transaction.order_id !== null ? transaction.order_id : ''}</td>
+                                <td>${transaction.total !== null ? transaction.total : ''}</td>
+                                <td>${transaction.from_bankacct !== null ? transaction.from_bankacct : ''}</td>
+                                <td>${transaction.tdate !== null ? transaction.tdate : ''}</td>
                                 <td>${transaction.bussiness_balance}</td>                                
                              </tr>`;
                 table.innerHTML += row;
             });
         }
+
+        // Function to display a warning message on the webpage
+        function displayWarning(message) {
+            let warningDiv = document.getElementById('warning');
+            if (!warningDiv) {
+                // Create a warning div if it doesn't exist
+                warningDiv = document.createElement('div');
+                warningDiv.id = 'warning';
+
+                // Style the warning box
+                warningDiv.style.position = 'fixed';
+                warningDiv.style.top = '50%';
+                warningDiv.style.left = '50%';
+                warningDiv.style.transform = 'translate(-50%, -50%)'; // Center the box
+                warningDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.8)'; // Red background with some transparency
+                warningDiv.style.color = 'white'; // White text color for contrast
+                warningDiv.style.padding = '20px';
+                warningDiv.style.borderRadius = '8px';
+                warningDiv.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)'; // Add a subtle shadow
+                warningDiv.style.textAlign = 'center';
+                warningDiv.style.maxWidth = '300px';
+                warningDiv.style.zIndex = '1000'; // Ensure it appears on top
+
+                document.body.appendChild(warningDiv);
+            }
+
+            // Set the warning message text
+            warningDiv.textContent = message;
+
+            // Automatically hide the warning after 3 seconds
+            setTimeout(() => {
+                warningDiv.remove();
+            }, 3000);
+        }
+
 
 
         // Load data when the page loads
