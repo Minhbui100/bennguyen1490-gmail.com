@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DBS 30</title>
+    <style>
+        .table-container {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+        
+        table {
+            border-collapse: collapse;
+            width: 30%;
+        }
+        
+        th,
+        td {
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: #f2f2f2;
+        }
+        
+        .form-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+    </style>
+    <script>
+        // CRUD operations for Students
+        async function fetchBill() {
+            const response = await fetch('http://localhost:3000/bill');
+            const bill = await response.json();
+            const table = document.getElementById('billtable');
+            table.innerHTML = '';
+            bill.forEach(bills => {
+                const row = `<tr>
+                    <td>${bills.bill_id}</td>
+                    <td>${bills.cust_id}</td>
+                    <td>${bills.total}</td>
+                    <td>${bills.tip}</td>
+                    <td>${bills.tax}</td>
+                    <td>${bills.card_id}</td>
+                    <td>${bills.paid}</td>
+                    </tr>`;
+                table.innerHTML += row;
+            });
+        }
+
+        async function payment() {
+            const orderId = document.getElementById('paymentOrderId').value; // Corrected to paymentOrderId
+            const customerId = document.getElementById('customerId').value;
+            const cardId = document.getElementById('cardId').value; // Fixed from cardID
+
+            await fetch(`http://localhost:3000/bill/${orderId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    customerId,
+                    cardId
+                })
+            });
+
+            // Clear input fields after submission
+            document.getElementById('paymentOrderId').value = '';
+            document.getElementById('customerId').value = '';
+            document.getElementById('cardId').value = '';
+            fetchBill(); // Refresh the bill data if necessary
+        }
+
+
+        // Fetch and display enrollments with student ID and enrollment date
+        async function fetchOrders() {
+            const response = await fetch('http://localhost:3000/orders');
+            const orders = await response.json();
+            const table = document.getElementById('ordersTable');
+            table.innerHTML = '';
+            orders.forEach(order => {
+                const row = `<tr>
+                                <td>${order.id}</td>
+                                <td>${order.bill_id}</td>
+                                <td>${order.name}</td>
+                                <td>${order.price}</td>
+                                <td>${order.quantity}</td>
+                             </tr>`;
+                table.innerHTML += row;
+            });
+        }
+
+        async function addOrders() {
+            const id = document.getElementById('billNumber').value;
+            const name = document.getElementById('orderName').value;
+            const price = document.getElementById('orderPrice').value;
+            const quantity = document.getElementById('orderQuantity').value;
+
+            await fetch('http://localhost:3000/orders', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    id, // Send id in the body
+                    name,
+                    price,
+                    quantity
+                })
+            });
+
+            document.getElementById('billNumber').value = '';
+            document.getElementById('orderName').value = ''; // Clear input fields
+            document.getElementById('orderPrice').value = '';
+            document.getElementById('orderQuantity').value = '';
+            fetchOrders();
+            fetchBill(); // Refresh enrollments to reflect any new students
+        }
+
+        async function deleteOrders() {
+            const id = document.getElementById('orderIdDelete').value;
+            await fetch(`http://localhost:3000/orders/${id}`, {
+                method: 'DELETE'
+            });
+            document.getElementById('orderIdDelete').value = '';
+            fetchOrders();
+            fetchBill(); // Refresh enrollments after deleting a student
+        }
+
+        async function fetchCards() {
+            const response = await fetch('http://localhost:3000/cards');
+            const cards = await response.json();
+            const table = document.getElementById('cardsTable');
+            table.innerHTML = '';
+            cards.forEach(card => {
+                const row = `<tr>
+                                <td>${card.id}</td>
+                                <td>${card.name}</td>
+                                <td>${card.ex_date}</td>
+                                <td>${card.balance}</td>                                
+                             </tr>`;
+                table.innerHTML += row;
+            });
+        }
+
+        async function fetchCustomers() {
+            const response = await fetch('http://localhost:3000/customers');
+            const customers = await response.json();
+            const table = document.getElementById('customersTable');
+            table.innerHTML = '';
+            customers.forEach(customer => {
+                const row = `<tr>
+                                <td>${customer.id}</td>
+                                <td>${customer.name}</td>
+                                <td>${customer.phone}</td>
+                                <td>${customer.membership_point}</td>                                
+                             </tr>`;
+                table.innerHTML += row;
+            });
+        }
+
+        async function fetchLocations() {
+            const response = await fetch('http://localhost:3000/location');
+            const locations = await response.json();
+            const table = document.getElementById('locationTable');
+            table.innerHTML = '';
+            locations.forEach(location => {
+                const row = `<tr>
+                                <td>${location.id}</td>
+                                <td>${location.name}</td>
+                                <td>${location.address}</td>
+                                <td>${location.manager_ssn}</td>                                
+                             </tr>`;
+                table.innerHTML += row;
+            });
+        }
+
+        async function fetchTransaction() {
+            const response = await fetch('http://localhost:3000/transaction');
+            const transactions = await response.json();
+            const table = document.getElementById('transactionTable');
+            table.innerHTML = '';
+            transactions.forEach(transaction => {
+                const row = `<tr>
+                                <td>${transaction.order_id}</td>
+                                <td>${transaction.total}</td>
+                                <td>${transaction.from_bankacct}</td>
+                                <td>${transaction.tdate}</td> 
+                                <td>${transaction.bussiness_balance}</td>                                
+                             </tr>`;
+                table.innerHTML += row;
+            });
+        }
+
+
+        // Load data when the page loads
+        window.onload = function() {
+            fetchBill();
+            fetchOrders();
+            fetchCards();
+            fetchCustomers();
+            fetchLocations();
+            fetchTransaction();
+        };
+    </script>
+</head>
+
+<body>
+
+    <h1>National Park Fast Food Restaurant</h1>
+
+    <div class="table-container">
+        <!-- Student List Table -->
+        <div>
+            <h2>Bill list</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Bill number</th>
+                        <th>Customer ID</th>
+                        <th>Total</th>
+                        <th>Tip</th>
+                        <th>Tax</th>
+                        <th>Card number</th>
+                        <th>Paid</th>
+                    </tr>
+                </thead>
+                <tbody id="billtable"></tbody>
+            </table>
+        </div>
+        <div>
+            <h2>Order List</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order number</th>
+                        <th>Bill number</th>
+                        <th>Dish</th>
+                        <th>Price</th>
+                        <th>Quantity</th>
+                    </tr>
+                </thead>
+                <tbody id="ordersTable"></tbody>
+            </table>
+        </div>
+        <div>
+            <h2>Card Info</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Card number</th>
+                        <th>Name</th>
+                        <th>Experation date</th>
+                        <th>Balance</th>
+                    </tr>
+                </thead>
+                <tbody id="cardsTable"></tbody>
+            </table>
+        </div>
+    </div>
+    <div class="table-container">
+        <div>
+            <h2>Customer Info</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Phone number</th>
+                        <th>Menbership point</th>
+                    </tr>
+                </thead>
+                <tbody id="customersTable"></tbody>
+            </table>
+        </div>
+        <div>
+            <h2>Restaurant Location</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Address</th>
+                        <th>Manager's SSN</th>
+                    </tr>
+                </thead>
+                <tbody id="locationTable"></tbody>
+            </table>
+        </div>
+        <div>
+            <h2>Bussiness Transactions</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Bill number</th>
+                        <th>Amount</th>
+                        <th>From Bank Account</th>
+                        <th>Date</th>
+                        <th>Current Balance</th>
+                    </tr>
+                </thead>
+                <tbody id="transactionTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="form-container">
+        <h2>Add Order</h2>
+        <input type="number" id="billNumber" placeholder="Bill number">
+        <input type="text" id="orderName" placeholder="Dish's name">
+        <input type="number" id="orderPrice" placeholder="Price">
+        <input type="number" id="orderQuantity" placeholder="Quantity">
+        <button onclick="addOrders()">Add Orders</button>
+
+        <h2>Delete Order</h2>
+        <input type="number" id="orderIdDelete" placeholder="Order number">
+        <button onclick="deleteOrders()">Delete Order</button>
+    </div>
+
+    <div class="form-container">
+        <h2>Payment</h2>
+        <input type="number" id="paymentOrderId" placeholder="Bill number">
+        <input type="number" id="customerId" placeholder="Customer ID">
+        <input type="text" id="cardId" placeholder="Card Number">
+        <button onclick="payment()">Payment</button>
+    </div>
+
+
+</body>
+
+</html>
