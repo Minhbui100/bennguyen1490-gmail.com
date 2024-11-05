@@ -245,7 +245,10 @@ app.put('/bill/:bill_id', async(req, res) => {
 
         // Deduct the total amount from the card balance
         await pool.query(
-            'UPDATE cards SET balance = balance - $1 WHERE id = $2', [totalAmount, cardId]
+            `UPDATE public.cards
+                SET balance = balance - b.total - b.tip - b.tax
+                FROM public.bill b
+                WHERE cards.id = $1 AND b.bill_id=$2;`, [cardId, bill_id]
         );
 
         const businessBalanceResult = await pool.query(
@@ -253,8 +256,7 @@ app.put('/bill/:bill_id', async(req, res) => {
         );
 
         const currentBusinessBalance = businessBalanceResult.rowCount > 0 ?
-            businessBalanceResult.rows[0].bussiness_balance :
-            5000.00; // Set to default if no transactions
+            businessBalanceResult.rows[0].bussiness_balance : 5000.00; // Set to default if no transactions
 
         // Calculate the new business balance
         const x = parseFloat(currentBusinessBalance) + parseFloat(totalAmount);
@@ -274,55 +276,6 @@ app.put('/bill/:bill_id', async(req, res) => {
     }
 });
 
-
-
-
-/*
-
-// Update student name by ID
-app.put('/students/:id', async(req, res) => {
-    const { id } = req.params;
-    const { name } = req.body;
-    try {
-        await pool.query('UPDATE students SET name = $1 WHERE id = $2', [name, id]);
-        res.sendStatus(200);
-    } catch (err) {
-        console.error(err.message);
-        res.sendStatus(500);
-    }
-});
-
-// Add a new student
-app.post('/students', async(req, res) => {
-    const { id, name } = req.body;
-
-    // Check if both id and name are provided
-    if (!id || !name) {
-        return res.status(400).json({ error: "ID and name are required" });
-    }
-
-    try {
-        await pool.query('INSERT INTO students (id, name) VALUES ($1, $2)', [id, name]);
-        res.sendStatus(201); // Successfully created
-    } catch (err) {
-        console.error(err.message);
-        res.sendStatus(500);
-    }
-});
-
-// Delete a student by ID
-app.delete('/students/:id', async(req, res) => {
-    const { id } = req.params;
-    try {
-        await pool.query('DELETE FROM students WHERE id = $1', [id]);
-        res.sendStatus(200);
-    } catch (err) {
-        console.error(err.message);
-        res.sendStatus(500);
-    }
-});
-*/
-// Start the server
 app.listen(3000, () => {
     console.log('Server is running on port 3000');
 });
