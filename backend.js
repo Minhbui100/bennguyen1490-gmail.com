@@ -141,10 +141,19 @@ app.post('/orders', async(req, res) => {
 
     // Check if both id and name are provided
     if (!id || !name || !price || !quantity) {
-        return res.status(400).json({ error: "ID, name, price and quantiry are required" });
+        return res.status(400).send("ID, name, price and quantiry are required");
     }
 
     try {
+        const result = await pool.query(
+            'SELECT paid FROM bill WHERE bill_id = $1', [id]
+        );
+
+        // If the bill is already paid, send a response and exit the function
+        if (result.rows.length > 0 && result.rows[0].paid === true) {
+            return res.status(400).send('Warning: The bill ID is already paid');
+        }
+
         const billCheck = await pool.query('SELECT 1 FROM Bill WHERE bill_id = $1', [id]);
         if (billCheck.rowCount === 0) {
             await pool.query(
@@ -170,6 +179,13 @@ app.delete('/orders/:id', async(req, res) => {
         }
         const orderId = result.rows[0].bill_id;
 
+        const result1 = await pool.query(
+            'SELECT paid FROM bill WHERE bill_id = $1', [orderId]
+        );
+        if (result1.rows.length > 0 && result1.rows[0].paid === true) {
+            return res.status(400).send('Warning: The bill ID is already paid');
+        }
+
         await pool.query('DELETE FROM orders WHERE id = $1', [id]);
         await pool.query('UPDATE Bill SET total = (SELECT COALESCE(SUM(price * quantity), 0) FROM Orders WHERE Orders.bill_id = Bill.bill_id);');
         await pool.query(`UPDATE Bill SET tax = total * 0.0825`);
@@ -186,31 +202,26 @@ app.delete('/orders/:id', async(req, res) => {
     }
 });
 
-app.post('/customers', async(req, res) => {
-    const { id, name } = req.body;
-
-    // Check if both id and name are provided
-    if (!id || !name) {
-        return res.status(400).json({ error: "ID and name are required" });
-    }
-
-    try {
-        await pool.query('INSERT INTO students (id, name) VALUES ($1, $2)', [id, name]);
-        res.sendStatus(201); // Successfully created
-    } catch (err) {
-        console.error(err.message);
-        res.sendStatus(500);
-    }
-});
-
+//transaction
 app.put('/bill/:bill_id', async(req, res) => {
     const { bill_id } = req.params;
     const { customerId, cardId } = req.body;
     try {
+        const result = await pool.query(
+            'SELECT paid FROM bill WHERE bill_id = $1', [bill_id]
+        );
+
+        // If the bill is already paid, send a response and exit the function
+        if (result.rows.length > 0 && result.rows[0].paid === true) {
+            return res.status(400).send('Warning: The bill ID is already paid');
+        }
+
         await pool.query(
             'UPDATE bill SET cust_id = $1, card_id = $2, paid = TRUE WHERE bill_id = $3', [customerId, cardId, bill_id]
         );
-
+        await pool.query(
+            'UPDATE customers SET membership_point=membership_point+1 WHERE id = $1', [customerId]
+        );
         res.sendStatus(200);
     } catch (err) {
         console.error(err.message);
