@@ -6,33 +6,138 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DBS 30</title>
     <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            background: url('https://www.yosemite.com/wp-content/uploads/2023/04/Jacks-Patio-Overview_Tenaya-1000x666-1.jpg') no-repeat center center fixed;
+            /* Change URL */
+            background-size: cover;
+            position: relative;
+        }
+        
+        h1 {
+            color: #ff7f50;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+            font-size: 2.5em;
+            margin-top: 20px;
+            animation: bounce 1s ease infinite alternate;
+        }
+        
+        h2 {
+            color: #030100;
+            background-color: #ffffff;
+        }
+        
+        p {
+            color: #030100;
+            background-color: #ffffff;
+        }
+        
+        @keyframes bounce {
+            from {
+                transform: translateY(0);
+            }
+            to {
+                transform: translateY(-10px);
+            }
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
         .table-container {
             display: flex;
             justify-content: space-around;
-            margin-top: 20px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+            gap: 20px;
         }
         
         table {
             border-collapse: collapse;
-            width: 30%;
+            width: 90%;
+            margin: 0 auto;
+            border-radius: 8px;
+            overflow: hidden;
+            animation: fadeIn 1.5s ease-in-out;
         }
         
         th,
         td {
-            padding: 8px;
-            text-align: left;
+            padding: 10px;
             border: 1px solid #ddd;
+            text-align: left;
+            background-color: #ffffff;
         }
         
         th {
-            background-color: #f2f2f2;
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
         }
         
+        tr:hover {
+            background-color: #f1f1f1;
+            transition: background-color 0.3s ease;
+        }
+        /* Button Styling */
+        
+        button {
+            background-color: #ff7f50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background-color: #ff6347;
+            transform: scale(1.05);
+        }
+        /* Form Styling */
+        
         .form-container {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-top: 20px;
+            margin: 20px auto;
+            width: 90%;
+            max-width: 400px;
+            text-align: left;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            animation: fadeIn 2s ease;
+        }
+        
+        input {
+            padding: 10px;
+            margin: 5px 0;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+        
+        .highlight {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: inline-block;
+            margin-bottom: 10px;
         }
     </style>
     <script>
@@ -157,6 +262,40 @@
             }
         }
 
+        async function addCustomer() {
+            const name = document.getElementById('custName').value;
+            const phone = document.getElementById('custPhone').value;
+
+            try {
+                const response = await fetch('http://localhost:3000/customers', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name,
+                        phone
+                    })
+                });
+
+                if (response.status === 400) {
+                    // Read and display the warning message from the response
+                    const warningMessage = await response.text();
+                    displayWarning(warningMessage);
+                } else if (response.ok) {
+                    // Clear input fields after successful submission
+
+                    fetchCustomers();
+                } else {
+                    console.error('An error occurred:', response.statusText);
+                }
+                document.getElementById('custName').value = '';
+                document.getElementById('custPhone').value = '';
+            } catch (error) {
+                console.error('Fetch error:', error);
+            }
+        }
+
         async function deleteOrders() {
             const id = document.getElementById('orderIdDelete').value;
             const response = await fetch(`http://localhost:3000/orders/${id}`, {
@@ -175,6 +314,25 @@
             }
             document.getElementById('orderIdDelete').value = '';
         }
+
+        async function deleteCustomer() {
+            const id = document.getElementById('custDelete').value;
+            const response = await fetch(`http://localhost:3000/customers/${id}`, {
+                method: 'DELETE'
+            });
+            if (response.status === 400) {
+                // Read and display the warning message from the response
+                const warningMessage = await response.text();
+                displayWarning(warningMessage);
+            } else if (response.ok) {
+                // Clear input fields after successful submission
+                fetchCustomers();
+            } else {
+                console.error('An error occurred:', response.statusText);
+            }
+            document.getElementById('custDelete').value = '';
+        }
+
 
         async function fetchCards() {
             const response = await fetch('http://localhost:3000/cards');
@@ -273,6 +431,128 @@
             setTimeout(() => {
                 warningDiv.remove();
             }, 3000);
+        }
+
+
+        async function deleteAllCustomers() {
+            try {
+                const response = await fetch('http://localhost:3000/customers', {
+                    method: 'DELETE'
+                });
+
+
+                if (response.status === 500) {
+                    // Read and display the warning message from the response
+                    const warningMessage = await response.text();
+                    displayWarning(warningMessage);
+                } else if (response.ok) {
+                    fetchCustomers();
+                } else {
+                    console.error('An error occurred:', response.statusText);
+                }
+            } catch (error) {
+                console.error("Failed to delete all customers:", error);
+            }
+        }
+
+        async function deleteAllLocations() {
+            try {
+                const response = await fetch('http://localhost:3000/location', {
+                    method: 'DELETE'
+                });
+
+                if (response.status === 500) {
+                    // Read and display the warning message from the response
+                    const warningMessage = await response.text();
+                    displayWarning(warningMessage);
+                } else if (response.ok) {
+                    fetchLocations(); // Call function to refresh the list of locations
+                } else {
+                    console.error('Unexpected response:', response.statusText);
+                }
+            } catch (error) {
+                console.error("Failed to delete all locations:", error);
+            }
+        }
+
+        async function deleteAllBills() {
+            try {
+                const response = await fetch('http://localhost:3000/bill', {
+                    method: 'DELETE'
+                });
+
+                if (response.status === 500) {
+                    // Read and display the warning message from the response
+                    const warningMessage = await response.text();
+                    displayWarning(warningMessage);
+                } else if (response.ok) {
+                    fetchBill(); // Call function to refresh the list of locations
+                } else {
+                    console.error('Unexpected response:', response.statusText);
+                }
+            } catch (error) {
+                console.error("Failed to delete all bills:", error);
+            }
+        }
+
+        async function deleteAllOrders() {
+            try {
+                const response = await fetch('http://localhost:3000/orders', {
+                    method: 'DELETE'
+                });
+
+                if (response.status === 500) {
+                    // Read and display the warning message from the response
+                    const warningMessage = await response.text();
+                    displayWarning(warningMessage);
+                } else if (response.ok) {
+                    fetchOrders(); // Call function to refresh the list of locations
+                } else {
+                    console.error('Unexpected response:', response.statusText);
+                }
+            } catch (error) {
+                console.error("Failed to delete all bills:", error);
+            }
+        }
+
+        async function deleteAllCards() {
+            try {
+                const response = await fetch('http://localhost:3000/cards', {
+                    method: 'DELETE'
+                });
+
+                if (response.status === 500) {
+                    // Read and display the warning message from the response
+                    const warningMessage = await response.text();
+                    displayWarning(warningMessage);
+                } else if (response.ok) {
+                    fetchCards(); // Call function to refresh the list of locations
+                } else {
+                    console.error('Unexpected response:', response.statusText);
+                }
+            } catch (error) {
+                console.error("Failed to delete all cards:", error);
+            }
+        }
+
+        async function deleteAllTransactions() {
+            try {
+                const response = await fetch('http://localhost:3000/transaction', {
+                    method: 'DELETE'
+                });
+
+                if (response.status === 500) {
+                    // Read and display the warning message from the response
+                    const warningMessage = await response.text();
+                    displayWarning(warningMessage);
+                } else if (response.ok) {
+                    fetchTransaction(); // Call function to refresh the list of locations
+                } else {
+                    console.error('Unexpected response:', response.statusText);
+                }
+            } catch (error) {
+                console.error("Failed to delete all transaction:", error);
+            }
         }
 
 
@@ -409,6 +689,32 @@
         <input type="number" id="tip" placeholder="Tip">
         <input type="text" id="cardId" placeholder="Card Number">
         <button onclick="payment()">Payment</button>
+    </div>
+
+    <div class="form-container">
+        <h2>Add Customer</h2>
+        <input type="text" id="custName" placeholder="Name">
+        <input type="text" id="custPhone" placeholder="Phone">
+        <button onclick="addCustomer()">Add customer</button>
+
+        <h2>Delete Customer</h2>
+        <input type="number" id="custDelete" placeholder="Customer ID">
+        <button onclick="deleteCustomer()">Delete Customer</button>
+    </div>
+
+    <div class="form-container">
+        <h2>Delete Data Table</h2>
+        <button onclick="deleteAllBills()">Delete All Bills</button>
+        <p></p>
+        <button onclick="deleteAllOrders()">Delete All Orders</button>
+        <p></p>
+        <button onclick="deleteAllCards()">Delete All Cards</button>
+        <p></p>
+        <button onclick="deleteAllCustomers()">Delete All Customers</button>
+        <p></p>
+        <button onclick="deleteAllLocations()">Delete All Locations</button>
+        <p></p>
+        <button onclick="deleteAllTransactions()">Delete All Transaction</button>
     </div>
 
 
