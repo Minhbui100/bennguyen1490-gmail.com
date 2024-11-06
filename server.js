@@ -202,6 +202,45 @@ app.delete('/orders/:id', async(req, res) => {
     }
 });
 
+//add customer
+app.post('/customers', async(req, res) => {
+    const { name, phone } = req.body;
+
+    // Check if both id and name are provided
+    if (!name || !phone) {
+        return res.status(400).send("Name and phone are required");
+    }
+
+    try {
+        const billCheck = await pool.query('SELECT 1 FROM customers WHERE phone = $1', [phone]);
+        if (billCheck.rowCount === 1) {
+            return res.status(400).send("This phone number is already used");
+        }
+        await pool.query('INSERT INTO customers (name, phone) VALUES ($1, $2)', [name, phone]);
+        res.sendStatus(201); // Successfully created
+    } catch (err) {
+        console.error(err.message);
+        res.sendStatus(500);
+    }
+});
+
+//delete customer
+app.delete('/customers/:id', async(req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query('SELECT id FROM customers WHERE id = $1', [id]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'ID not found' });
+        }
+
+        await pool.query('DELETE FROM customers WHERE id = $1', [id]);
+        res.sendStatus(200);
+    } catch (err) {
+        console.error(err.message);
+        res.sendStatus(500);
+    }
+});
+
 //transaction
 app.put('/bill/:bill_id', async(req, res) => {
     const { bill_id } = req.params;
@@ -230,13 +269,9 @@ app.put('/bill/:bill_id', async(req, res) => {
             'UPDATE bill SET cust_id = $1, tip=$2, card_id = $3, paid = TRUE WHERE bill_id = $4', [customerId, tip, cardId, bill_id]
         );
 
-
-
         // Calculate the total amount to deduct from the card balance
         const formattedTotalAmount = parseFloat(billData.total) + parseFloat(tip) + parseFloat(billData.tax);
         const totalAmount = parseFloat(formattedTotalAmount.toFixed(2));
-
-
 
         // Update the customer's membership points
         await pool.query(
@@ -272,7 +307,76 @@ app.put('/bill/:bill_id', async(req, res) => {
         res.sendStatus(200);
     } catch (err) {
         console.error('Error processing the request:', err.message);
-        res.sendStatus(500);
+        return res.status(400).send('Internal Server Violation');
+    }
+});
+
+
+app.delete('/customers', async(req, res) => {
+    try {
+        const result = await pool.query('DELETE FROM customers');
+
+        res.sendStatus(200); // Send OK response
+    } catch (err) {
+        console.error(err.message);
+        res.sendStatus(500); // Internal server error
+    }
+});
+
+app.delete('/location', async(req, res) => {
+    try {
+        await pool.query('DELETE FROM location;');
+        res.sendStatus(200); // Send OK response
+    } catch (err) {
+        console.error('Error deleting rows from location table:', err.message);
+        res.status(500).json({ error: 'Internal server error' }); // Return detailed error
+    }
+});
+
+app.delete('/bill', async(req, res) => {
+    try {
+        await pool.query('DELETE FROM bill;');
+        res.sendStatus(200); // Send OK response
+    } catch (err) {
+        console.error('Error deleting rows from bill table:', err.message);
+        res.status(500).json({ error: 'Internal server error' }); // Return detailed error
+    }
+});
+
+app.delete('/orders', async(req, res) => {
+    try {
+        const result = await pool.query('SELECT 1 FROM bill WHERE paid = true LIMIT 1');
+
+        if (result.rowCount > 0) {
+            // If there are any paid bills, return a warning
+            return res.status(500).json({ error: 'Cannot delete orders because there are paid bills.' });
+        }
+
+        await pool.query('DELETE FROM orders;');
+        res.sendStatus(200); // Send OK response
+    } catch (err) {
+        console.error('Error deleting rows from orders table:', err.message);
+        res.status(500).json({ error: 'Internal server error' }); // Return detailed error
+    }
+});
+
+app.delete('/cards', async(req, res) => {
+    try {
+        await pool.query('DELETE FROM cards;');
+        res.sendStatus(200); // Send OK response
+    } catch (err) {
+        console.error('Error deleting rows from cards table:', err.message);
+        res.status(500).json({ error: 'Internal server error' }); // Return detailed error
+    }
+});
+
+app.delete('/transaction', async(req, res) => {
+    try {
+        await pool.query('DELETE FROM transaction;');
+        res.sendStatus(200); // Send OK response
+    } catch (err) {
+        console.error('Error deleting rows from transaction table:', err.message);
+        res.status(500).json({ error: 'Internal server error' }); // Return detailed error
     }
 });
 
